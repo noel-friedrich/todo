@@ -57,9 +57,9 @@ class List {
         return element
     }
 
-    onCheck(rowId, checked, sendRequest=true) {
+    async onCheck(rowId, checked, sendRequest=true) {
         if (sendRequest)
-            httpGetAsync(CHECK_ITEM_API, {item_id: rowId, check_val: (checked ? 1 : 0)})
+            await httpGetAsync(CHECK_ITEM_API, {item_id: rowId, check_val: (checked ? 1 : 0)})
         if (checked) {
             this.rowElements[rowId].text.style.textDecoration = "#0075ff line-through"
             this.rowElements[rowId].time.style.textDecoration = "#0075ff line-through"
@@ -104,7 +104,7 @@ class List {
         }.bind(this)
     }
 
-    finishEdit() {
+    async finishEdit() {
         if (this.editing == false) return
         let rowId = this.editing
         this.editing = false
@@ -112,7 +112,7 @@ class List {
         this.textEdit.remove()
         this.rowElements[rowId].text.style.display = ""
         this.rowElements[rowId].text.textContent = this.textEdit.value
-        httpGetAsync(EDIT_ITEM_API, {id: rowId, text_content: this.textEdit.value})
+        await httpGetAsync(EDIT_ITEM_API, {id: rowId, text_content: this.textEdit.value})
     }
 
     constructor(json) {
@@ -146,9 +146,9 @@ class MobileList {
         return element
     }
 
-    onCheck(rowId, checked, sendRequest=true) {
+    async onCheck(rowId, checked, sendRequest=true) {
         if (sendRequest)
-            httpGetAsync(CHECK_ITEM_API, {item_id: rowId, check_val: (checked ? 1 : 0)})
+            await httpGetAsync(CHECK_ITEM_API, {item_id: rowId, check_val: (checked ? 1 : 0)})
         if (checked) {
             this.rowElements[rowId].text.style.textDecoration = "#0075ff line-through"
             this.rowElements[rowId].time.style.textDecoration = "#0075ff line-through"
@@ -204,7 +204,7 @@ class MobileList {
         }.bind(this)
     }
 
-    finishEdit() {
+    async finishEdit() {
         if (this.editing == false) return
         let rowId = this.editing
         this.editing = false
@@ -212,7 +212,7 @@ class MobileList {
         this.textEdit.remove()
         this.rowElements[rowId].text.style.display = ""
         this.rowElements[rowId].text.textContent = this.textEdit.value
-        httpGetAsync(EDIT_ITEM_API, {id: rowId, text_content: this.textEdit.value})
+        await httpGetAsync(EDIT_ITEM_API, {id: rowId, text_content: this.textEdit.value})
     }
 
     constructor(json) {
@@ -255,7 +255,7 @@ class AddItemPopup {
         activePopup = null
     }
 
-    submit() {
+    async submit() {
         let text = this.textInput.value
         let dueTime = "-"
         if (this.dueTimeInput.value) {
@@ -268,7 +268,7 @@ class AddItemPopup {
         }
         console.log(text, dueTime)
         this.delete()
-        httpGetAsync(ADD_ITEM_API, {text_content: text, due_time: dueTime, owner_name: OWNER_NAME})
+        await httpGetAsync(ADD_ITEM_API, {text_content: text, due_time: dueTime, owner_name: OWNER_NAME})
         window.location.reload()
     }
 
@@ -289,9 +289,9 @@ class AddItemPopup {
         this.body.appendChild(this.button)
         document.body.appendChild(this.body)
 
-        this.textInput.onkeydown = function(e) {
+        this.textInput.onkeydown = async function(e) {
             if (e.key == "Enter")
-                this.submit()
+                await this.submit()
         }.bind(this)
 
         this.button.addEventListener("click", () => this.submit())
@@ -348,10 +348,10 @@ EDIT_BUTTON.onclick = event => {
     list.activateEdit(LAST_CONTEXT_TARGET_ID)
 }
 
-DELETE_BUTTON.onclick = event => {
+DELETE_BUTTON.onclick = async event => {
     if (LAST_CONTEXT_TARGET_ID == null) return
     if (confirm("Willst du den Eintrag wirklich löschen?")) {
-        httpGetAsync(DELETE_ITEM_API, {id: LAST_CONTEXT_TARGET_ID})
+        await httpGetAsync(DELETE_ITEM_API, {id: LAST_CONTEXT_TARGET_ID})
         window.location.reload()
     }
 }
