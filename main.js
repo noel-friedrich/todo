@@ -31,6 +31,7 @@ async function httpGetAsync(url, params={}) {
             if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
                 resolve(xmlHttp.responseText)
         }
+        console.log(url, params)
         xmlHttp.open("GET", url + formatUrlParams(params), true) 
         xmlHttp.send(null)
     })
@@ -57,9 +58,9 @@ class List {
         return element
     }
 
-    async onCheck(rowId, checked, sendRequest=true) {
+    async onCheck(rowUid, rowId, checked, sendRequest=true) {
         if (sendRequest)
-            await httpGetAsync(CHECK_ITEM_API, {item_id: rowId, check_val: (checked ? 1 : 0)})
+            await httpGetAsync(CHECK_ITEM_API, {item_uid: rowUid, check_val: (checked ? 1 : 0)})
         if (checked) {
             this.rowElements[rowId].text.style.textDecoration = "#0075ff line-through"
             this.rowElements[rowId].time.style.textDecoration = "#0075ff line-through"
@@ -69,27 +70,28 @@ class List {
         }
     }
 
-    addCheckbox(checked, rowId) {
+    addCheckbox(checked, rowId, rowUid) {
         let container = this.addElement("", {class: "list-item list-item-checkbox-container"})
         let checkbox = this.addElement("", {class: "list-item-checkbox list-item", type: "checkbox"}, "input", false)
         checkbox.checked = checked
         checkbox.onclick = function() {
-            this.onCheck(rowId, checkbox.checked)
+            this.onCheck(rowUid, rowId, checkbox.checked)
         }.bind(this)
         container.appendChild(checkbox)
     }
 
-    addRow(textContent, dueTime, done, rowId) {
-        this.addCheckbox(done, rowId)
-        let textElement = this.addElement(textContent, {class: "list-item list-item-content", item_id: rowId}, "div")
-        let timeElement = this.addElement(dueTime, {class: "list-item list-item-due-time", item_id: rowId}, "div")
+    addRow(textContent, dueTime, done, rowId, rowUid) {
+        this.addCheckbox(done, rowId, rowUid)
+        let textElement = this.addElement(textContent, {class: "list-item list-item-content", item_id: rowId, item_uid: rowUid}, "div")
+        let timeElement = this.addElement(dueTime, {class: "list-item list-item-due-time", item_id: rowId, item_uid: rowUid}, "div")
         this.rowElements[rowId] = {text: textElement, time: timeElement}
-        this.onCheck(rowId, done, false)
+        this.onCheck(rowUid, rowId, done, false)
     }
 
     activateEdit(rowId) {
         if (this.editing != false) return
         this.editing = rowId
+        this.editingUid = this.rowElements[rowId].text.getAttribute("item_uid")
         let textEdit = this.addElement("", {class: "list-item list-item-edit-text", type: "text"}, "input", false)
         textEdit.value = this.rowElements[rowId].text.textContent
         textEdit.setAttribute("item_id", rowId)
@@ -107,12 +109,14 @@ class List {
     async finishEdit() {
         if (this.editing == false) return
         let rowId = this.editing
+        let rowUid = this.editingUid
         this.editing = false
+        this.editingUid = false
         this.textEdit = document.getElementById("edit-text")
         this.textEdit.remove()
         this.rowElements[rowId].text.style.display = ""
         this.rowElements[rowId].text.textContent = this.textEdit.value
-        await httpGetAsync(EDIT_ITEM_API, {id: rowId, text_content: this.textEdit.value})
+        await httpGetAsync(EDIT_ITEM_API, {uid: rowUid, text_content: this.textEdit.value})
     }
 
     constructor(json) {
@@ -120,15 +124,17 @@ class List {
         this.rowElements = Object()
         this.rows = Array()
         this.editing = false
+        this.editingUid = false
         for (let item of json) {
             let row = {
                 id: item.id,
                 dueTime: item.due_time,
                 textContent: item.text_content,
-                done: item.done
+                done: item.done,
+                uid: item.uid
             }
             this.rows.push(row)
-            this.addRow(row.textContent, row.dueTime, row.done == 1, row.id)
+            this.addRow(row.textContent, row.dueTime, row.done == 1, row.id, row.uid)
         }
     }
 
@@ -146,9 +152,9 @@ class MobileList {
         return element
     }
 
-    async onCheck(rowId, checked, sendRequest=true) {
+    async onCheck(rowUid, rowId, checked, sendRequest=true) {
         if (sendRequest)
-            await httpGetAsync(CHECK_ITEM_API, {item_id: rowId, check_val: (checked ? 1 : 0)})
+            await httpGetAsync(CHECK_ITEM_API, {item_uid: rowUid, check_val: (checked ? 1 : 0)})
         if (checked) {
             this.rowElements[rowId].text.style.textDecoration = "#0075ff line-through"
             this.rowElements[rowId].time.style.textDecoration = "#0075ff line-through"
@@ -158,22 +164,23 @@ class MobileList {
         }
     }
 
-    addCheckbox(checked, rowId) {
+    addCheckbox(checked, rowId, rowUid) {
         let container = this.addElement("", {class: "mobile-list-item-checkbox-container"})
         let checkbox = this.addElement("", {class: "mobile-list-item-checkbox", type: "checkbox"}, "input")
         checkbox.checked = checked
         checkbox.setAttribute("item_id", rowId)
+        checkbox.setAttribute("item_uid", rowUid)
         checkbox.onclick = function() {
-            this.onCheck(rowId, checkbox.checked)
+            this.onCheck(rowUid, rowId, checkbox.checked)
         }.bind(this)
         container.appendChild(checkbox)
         return container
     }
 
-    addRow(textContent, dueTime, done, rowId) {
-        let checkBoxContainer = this.addCheckbox(done, rowId)
-        let textElement = this.addElement(textContent, {class: "mobile-list-item-content", item_id: rowId}, "div")
-        let timeElement = this.addElement(dueTime, {class: "mobile-list-item-due-time", item_id: rowId}, "div")
+    addRow(textContent, dueTime, done, rowId, rowUid) {
+        let checkBoxContainer = this.addCheckbox(done, rowId, rowUid)
+        let textElement = this.addElement(textContent, {class: "mobile-list-item-content", item_id: rowId, item_uid: rowUid}, "div")
+        let timeElement = this.addElement(dueTime, {class: "mobile-list-item-due-time", item_id: rowId, item_uid: rowUid}, "div")
         let rowContainer = this.addElement("", {class: "mobile-list-item"}, "div", true)
         let subContainer = this.addElement("", {class: "mobile-list-item-sub"}, "div")
 
@@ -184,15 +191,17 @@ class MobileList {
             rowContainer.style.gridTemplateColumns = "1fr"
         rowContainer.appendChild(checkBoxContainer)
         this.rowElements[rowId] = {text: textElement, time: timeElement, container: rowContainer}
-        this.onCheck(rowId, done, false)
+        this.onCheck(rowUid, rowId, done, false)
     }
 
     activateEdit(rowId) {
         if (this.editing != false) return
         this.editing = rowId
+        this.editingUid = this.rowElements[rowId].text.getAttribute("item_uid")
         let textEdit = this.addElement("", {class: "mobile-list-item-edit-text", type: "text"}, "input", false)
         textEdit.value = this.rowElements[rowId].text.textContent
         textEdit.setAttribute("item_id", rowId)
+        textEdit.setAttribute("item_uid", this.rowElements[rowId].text.getAttribute("item_uid"))
         textEdit.id = "edit-text"
         this.rowElements[rowId].container.appendChild(textEdit)
         this.rowElements[rowId].text.style.display = "none"
@@ -207,12 +216,14 @@ class MobileList {
     async finishEdit() {
         if (this.editing == false) return
         let rowId = this.editing
+        let rowUid = this.editingUid
         this.editing = false
+        this.editingUid = false
         this.textEdit = document.getElementById("edit-text")
         this.textEdit.remove()
         this.rowElements[rowId].text.style.display = ""
         this.rowElements[rowId].text.textContent = this.textEdit.value
-        await httpGetAsync(EDIT_ITEM_API, {id: rowId, text_content: this.textEdit.value})
+        await httpGetAsync(EDIT_ITEM_API, {uid: rowUid, text_content: this.textEdit.value})
     }
 
     constructor(json) {
@@ -220,15 +231,17 @@ class MobileList {
         this.rowElements = Object()
         this.rows = Array()
         this.editing = false
+        this.editingUid = null
         for (let item of json) {
             let row = {
                 id: item.id,
                 dueTime: item.due_time,
                 textContent: item.text_content,
-                done: item.done
+                done: item.done,
+                uid: item.uid
             }
             this.rows.push(row)
-            this.addRow(row.textContent, row.dueTime, row.done == 1, row.id)
+            this.addRow(row.textContent, row.dueTime, row.done == 1, row.id, row.uid)
         }
 
         LIST_CONTAINER.classList.add("mobile")
@@ -327,6 +340,7 @@ document.body.addEventListener("click", function(event) {
 })
 
 let LAST_CONTEXT_TARGET_ID = null
+let LAST_CONTEXT_TARGET_UID = null
 
 document.body.oncontextmenu = function(event) {
     let target = event.target
@@ -335,6 +349,7 @@ document.body.oncontextmenu = function(event) {
         CONTEXT_MENU.style.left = event.clientX + "px"
         CONTEXT_MENU.style.top = (event.clientY + document.getElementsByTagName("html")[0].scrollTop) + "px"
         LAST_CONTEXT_TARGET_ID = target.getAttribute("item_id")
+        LAST_CONTEXT_TARGET_UID = target.getAttribute("item_uid")
         event.preventDefault()
         if (window.mobileCheck()) {
             CONTEXT_MENU.style.left = (event.clientX - CONTEXT_MENU.clientWidth / 2) + "px"
@@ -351,7 +366,7 @@ EDIT_BUTTON.onclick = event => {
 DELETE_BUTTON.onclick = async event => {
     if (LAST_CONTEXT_TARGET_ID == null) return
     if (confirm("Willst du den Eintrag wirklich löschen?")) {
-        await httpGetAsync(DELETE_ITEM_API, {id: LAST_CONTEXT_TARGET_ID})
+        await httpGetAsync(DELETE_ITEM_API, {uid: LAST_CONTEXT_TARGET_UID})
         window.location.reload()
     }
 }
